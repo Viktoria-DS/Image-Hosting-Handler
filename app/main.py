@@ -1,4 +1,5 @@
 import os
+import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import logging
 import settings
@@ -9,7 +10,12 @@ from app.image_hosting_handler import ImageHostingHandler
 
 logging.basicConfig(level=logging.INFO,
                     format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    datefmt='%d-%b-%y %H:%M:%S')
+                    datefmt='%d-%b-%y %H:%M:%S',
+                    handlers = [
+                        logging.StreamHandler(),
+                        logging.FileHandler(f'../{LOGDIR}/server.log')
+                    ]
+                    )
 logger = logging.getLogger(__name__)
 
 def run(server_address=('', 8000), server_class=HTTPServer, handler_class=ImageHostingHandler):
