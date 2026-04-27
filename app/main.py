@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%d-%b-%y %H:%M:%S',
                     handlers = [
                         logging.StreamHandler(),
-                        logging.FileHandler(f'../{LOGDIR}/server.log')
+                        logging.FileHandler(f'../{settings.LOGDIR}/server.log')
                     ]
                     )
 logger = logging.getLogger(__name__)
