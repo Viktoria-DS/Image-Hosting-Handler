@@ -8,7 +8,7 @@ import logging
 import multipart
 
 from app.settings import MEDIA_PATH
-from base_handler import BaseHandler
+from app.base_handler import BaseHandler
 
 logger = logging.getLogger(__name__)
 
