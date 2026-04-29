@@ -12,6 +12,7 @@ from app.settings import STATIC_DIR, IMAGE_EXTENSIONS, MAX_FILE_SIZE, MEDIA_PATH
 
 logger = logging.getLogger(__name__)
 
+
 class BaseHandler(BaseHTTPRequestHandler):
     server_version = '0.1'
     server_name = 'Image Hosting Server'
@@ -22,17 +23,16 @@ class BaseHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data if isinstance(data, bytes) else data.encode('utf-8'))
 
-
-    def html_response(self, data: str | bytes, status_code = 200) -> None:
+    def html_response(self, data: str | bytes, status_code=200) -> None:
         self.response(data, 'text/html', status_code)
 
-    def json_response(self, data: dict | list | str | bytes, status_code = 200) -> None:
+    def json_response(self, data: dict | list | str | bytes, status_code=200) -> None:
         if isinstance(data, (dict, list)):
             data = json.dumps(data)
         self.response(data, 'application/json', status_code)
 
     @staticmethod
-    def load_file(filename:str, directory: pathlib.Path = STATIC_PATH) -> bytes:
+    def load_file(filename: str, directory: pathlib.Path = STATIC_PATH) -> bytes:
         try:
             path = (directory / filename.lstrip('/')).resolve()
             path.relative_to(directory.resolve())
@@ -60,39 +60,37 @@ class BaseHandler(BaseHTTPRequestHandler):
     def send_media_file(self, filename: str) -> None:
         self.response(self.load_file(filename, MEDIA_PATH), 'image/png')
 
-
     def validate_file(self, file: MultipartPart) -> bool:
         name, ext = file.filename.split('.')
         if ext.lower() not in IMAGE_EXTENSIONS:
-            self.response(f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}', status_code = 400)
+            self.response(f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}', status_code=400)
             return False
         if file.size > MAX_FILE_SIZE:
-            self.response('File size too large', status_code = 400)
+            self.response('File size too large', status_code=400)
             return False
         return True
 
-    def parse_multipart(self, content_type: str, options: dict, content_length: int, filename: str = None) -> None:
+    def parse_multipart(self, content_type: str, options: dict, content_length: int, filename: str = None) -> str | None:
 
         if content_type == 'multipart/form-data' and "boundary" in options:
             parser = MultipartParser(self.rfile, boundary=options['boundary'], content_length=content_length)
             for part in parser:
                 if self.validate_file(part):
                     logger.info(f'{part.name}: File upload ({part.size} bytes)')
+                    ext = pathlib.Path(part.filename).suffix
+                    uploaded_name = f'{filename}.{ext}' if filename else part.filename
                     part.save_as(MEDIA_PATH / (f'{filename}.{part.filename.split(".")[1]}' or part.filename))
+                    return uploaded_name
                 else:
                     logger.info(f'{part.name}: Invalid file ({part.size} bytes)')
                     return
 
             for part in parser.parts():
                 part.close()
-        else:
-            self.request('Request without Form', 400)
-            return
-        self.response('File upload successful',201)
+        return None
 
-
-    def upload_file(self, filename: str = None) -> None:
+    def upload_file(self, filename: str = None) -> str | None:
         self.response('got your file', 'text/plain', 200)
         content_type, options = parse_options_header(self.headers['Content-Type'])
         content_length = int(self.headers['Content-Length'])
-        self.parse_multipart(content_type, options, content_length, filename)
+        return self.parse_multipart(content_type, options, content_length, filename)

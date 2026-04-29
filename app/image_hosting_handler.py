@@ -11,6 +11,8 @@ from app.settings import MEDIA_PATH
 from base_handler import BaseHandler
 
 logger = logging.getLogger(__name__)
+
+
 class ImageHostingHandler(BaseHandler):
 
     def do_GET(self):
@@ -41,7 +43,11 @@ class ImageHostingHandler(BaseHandler):
         logger.info(f'POST {self.client_address[0]}:{self.path}')
         if self.path == '/api/upload':
             unique_id = uuid.uuid4()
-            self.upload_file(str(unique_id)[8])
+            filename = self.upload_file(str(unique_id)[:8])
+            self.json_response({
+                'message': 'File uploaded successfully',
+                'file': filename
+            }, 201)
         else:
             html.response('Not found', 404)
 
@@ -52,14 +58,11 @@ class ImageHostingHandler(BaseHandler):
             name = self.path.split('/')[-1]
             self.delete_image(name)
 
-
     def get_images(self):
         self.json_response({
             'images': [f.name for f in MEDIA_PATH.iterdir() if
                        f.name != '.gitkeep']
         })
-
-
 
     def delete_image(self, name):
         try:
@@ -69,12 +72,3 @@ class ImageHostingHandler(BaseHandler):
         except FileNotFoundError:
             logger.info(f'Image {name} not found (on delete)')
             self.json_response({'message': 'Image not found'}, status_code=404)
-
-
-
-
-
-
-
-
-
