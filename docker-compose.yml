@@ -9,9 +9,8 @@ services:
       - ./images:/app/images
       - ./logs:/app/logs
       - ./static:/app/static
-    env_file:
-      - .env
-
+    env_file: .env
+    restart: always
   nginx:
     image: nginx:alpine
     ports:
