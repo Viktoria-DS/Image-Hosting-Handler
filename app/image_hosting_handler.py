@@ -44,12 +44,21 @@ class ImageHostingHandler(BaseHandler):
         if self.path == '/api/upload':
             unique_id = uuid.uuid4()
             filename = self.upload_file(str(unique_id)[:8])
+            if filename:
+                self.json_response({
+                    'message': 'File uploaded successfully',
+                    'filename': filename,
+                }, status_code=201)
+            else:
+                self.json_response({
+                    'message': 'Invalid file type or file size',
+                })
             self.json_response({
                 'message': 'File uploaded successfully',
                 'file': filename
             }, 201)
         else:
-            html.response('Not found', 404)
+            html.response('Not found', 405)
 
     def do_DELETE(self):
         # delete image by name

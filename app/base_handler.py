@@ -61,20 +61,22 @@ class BaseHandler(BaseHTTPRequestHandler):
     def send_media_file(self, filename: str) -> None:
         self.response(self.load_file(filename, MEDIA_PATH), 'image/png')
 
+    @staticmethod
     def validate_file(self, file: MultipartPart) -> bool:
         ext = pathlib.Path(file.filename).suffix.lstrip('.').lower()
         if not ext:
-            self.response(
-                f'Invalid file type. Allowed file types are  ({IMAGE_EXTENSIONS})',
-            )
+            # self.response(
+            #     f'Invalid file type. Allowed file types are  ({IMAGE_EXTENSIONS})',
+            # )
+            return False
         if ext.lower() not in IMAGE_EXTENSIONS:
-            self.response(
-                f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}',
-                status_code = 400)
-            self.response(f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}', status_code=400)
+            # self.response(
+            #     f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}',
+            #     status_code = 400)
+            # self.response(f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}', status_code=400)
             return False
         if file.size > MAX_FILE_SIZE:
-            self.response('File size too large', status_code = 400)
+            # self.response('File size too large', status_code = 400)
             return False
         temp_file = f'temp.{ext}'
         file.save_as(temp_file)
@@ -82,7 +84,7 @@ class BaseHandler(BaseHTTPRequestHandler):
             with Image.open(temp_file) as img:
                 img.verify()
         except (IOError, SyntaxError):
-            self.response('File size too large', status_code=400)
+            # self.response('Invalid file type', status_code=400)
             return False
         return True
 
@@ -102,7 +104,7 @@ class BaseHandler(BaseHTTPRequestHandler):
                     part.save_as(MEDIA_PATH / uploaded_name)
                 else:
                     logger.info(f'{part.name}: Invalid file ({part.size} bytes)')
-                    return
+                    return None
 
             for part in parser.parts():
                 part.close()
