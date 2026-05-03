@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler
 import pathlib
 import logging
 
+from PIL import Image
 from multipart import MultipartPart, MultipartParser, parse_options_header
 
 from app.settings import STATIC_DIR, IMAGE_EXTENSIONS, MAX_FILE_SIZE, MEDIA_PATH, STATIC_PATH
@@ -61,14 +62,28 @@ class BaseHandler(BaseHTTPRequestHandler):
         self.response(self.load_file(filename, MEDIA_PATH), 'image/png')
 
     def validate_file(self, file: MultipartPart) -> bool:
-        name, ext = file.filename.split('.')
+        ext = pathlib.Path(file.filename).suffix.lstrip('.').lower()
+        if not ext:
+            self.response(
+                f'Invalid file type. Allowed file types are  ({IMAGE_EXTENSIONS})',
+            )
         if ext.lower() not in IMAGE_EXTENSIONS:
+            self.response(
+                f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}',
+                status_code = 400)
             self.response(f'Invalid file type. Allowed types are {IMAGE_EXTENSIONS}', status_code=400)
             return False
         if file.size > MAX_FILE_SIZE:
+            self.response('File size too large', status_code = 400)
+            return False
+        temp_file = f'temp.{ext}'
+        file.save_as(temp_file)
+        try:
+            with Image.open(temp_file) as img:
+                img.verify()
+        except (IOError, SyntaxError):
             self.response('File size too large', status_code=400)
             return False
-        # TODO: validate file with PIL
         return True
 
     def parse_multipart(self, content_type: str, options: dict, content_length: int, filename: str = None) -> str | None:
@@ -82,6 +97,9 @@ class BaseHandler(BaseHTTPRequestHandler):
                     uploaded_name = f'{filename}.{ext}' if filename else part.filename
                     part.save_as(MEDIA_PATH / (f'{filename}.{part.filename.split(".")[1]}' or part.filename))
                     return uploaded_name
+                    ext = pathlib.Path(part.filename).suffix
+                    uploaded_name = f'{filename}.{ext}' if filename else part.filename
+                    part.save_as(MEDIA_PATH / uploaded_name)
                 else:
                     logger.info(f'{part.name}: Invalid file ({part.size} bytes)')
                     return
