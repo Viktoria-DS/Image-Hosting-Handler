@@ -17,41 +17,32 @@ logger = logging.getLogger(__name__)
 
 class ImageHostingHandler(BaseHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.db: DBManager = DBManager()
+        super().__init__(*args, **kwargs)
 
     def do_GET(self):
-        self.db: DBManager = DBManager()
         logger.info(f'GET {self.client_address[0]}:{self.path}')
-        if self.path.startswith('/api/'):
-            # images list /api/images
-            # image /api/images/<id>
-            if self.path == '/api/images-data/':
-                self.get_images_names()
-            # get all data from db of images
-            elif self.path == '/api/images':
-                self.get_images()
-            elif self.path.startswith('/api/images/'):
-                name = self.path.split('/')[-1]
-                self.send_media_file(name)
 
-        elif self.path == '/':
-            self.template_response('index.html')
-        elif self.path == '/upload':
-            self.template_response('upload.html')
-        elif self.path == '/images':
-            self.template_response('images.html')
-        # images list
-
-        # elif any((self.path.endswith(ext) for ext in ['.css', '.js', '.png'])):
-        #     self.send_static_file(self.path)
+        api_handlers = {
+            '/api/images': self.get_images_names,
+            '/api/images-data': self.get_images,
+        }
+        templates = {
+            '/': 'index.html',
+            '/upload': 'upload.html',
+            '/images': 'images.html',
+        }
+        if self.path in templates:
+            self.template_response(templates[self.path])
+            return
+        elif self.path in api_handlers:
+            api_handlers[self.path]()
+            return
         else:
             self.template_response('Not found', 404)
 
     def do_POST(self):
-        self.db: DBManager = DBManager()
         logger.info(f'POST {self.client_address[0]}:{self.path}')
-        self.db: DBManager = DBManager()
         if self.path == '/api/upload':
             image_dict = self.upload_file()
             if image_dict:
@@ -68,12 +59,11 @@ class ImageHostingHandler(BaseHandler):
             html.response('Not found', 405)
 
     def do_DELETE(self):
-        self.db: DBManager = DBManager()
         logger.info(f'DELETE {self.client_address[0]}:{self.path}')
-        self.db: DBManager = DBManager()
         if self.path.startswith('/api/images/'):
             name = self.path.split('/')[-1]
-            self.delete_image(name)
+            name, file_type = name.rsplit('.', 1)
+            self.delete_image(name, file_type)
             # delete from db
 
     def get_images_names(self):
@@ -88,18 +78,17 @@ class ImageHostingHandler(BaseHandler):
                 'filename': i[1],
                 'original_name': i[2],
                 'size': i[3],
-                'upload_time': i[4],
-                'file_type': i[5].strftime("%Y-%m-%d %H:%M:%S"),
+                'upload_time': i[4].strftime("%Y-%m-%d %H:%M:%S"),
+                'file_type': i[5],
             } for i in images]
         self.json_response({
             'images': res_images
         })
 
-    def delete_image(self, name: str):
-        # delete image from db
+    def delete_image(self, name: str, file_type: str):
         try:
             self.db.delete_image(name)
-            (MEDIA_PATH / name).unlink()
+            (MEDIA_PATH / (name + '.' + file_type)).unlink()
             logger.info(f'Image {name} deleted successfully')
             self.json_response({'message': 'Image deleted'}, status_code=204)
         except FileNotFoundError:
