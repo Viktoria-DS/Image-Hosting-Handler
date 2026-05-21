@@ -1,7 +1,7 @@
 import html
-import urllib.parse
+
 from os import environ
-from urllib import parse
+from urllib.parse import urlsplit
 import uuid
 
 import logging
@@ -21,25 +21,22 @@ class ImageHostingHandler(BaseHandler):
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
-        logger.info(f'GET {self.client_address[0]}:{self.path}')
+        logger.info(f"GET {self.client_address[0]}: {self.path}")
 
-        api_handlers = {
-            '/api/images': self.get_images_names,
-            '/api/images-data': self.get_images,
-        }
-        templates = {
-            '/': 'index.html',
-            '/upload': 'upload.html',
-            '/images': 'images.html',
-        }
-        if self.path in templates:
-            self.template_response(templates[self.path])
-            return
-        elif self.path in api_handlers:
-            api_handlers[self.path]()
-            return
+        if self.path == '/':
+            self.template_response('index.html')
+        elif self.path == '/upload':
+            self.template_response('upload.html')
+        elif self.path.startswith('/images'):
+            self.template_response('images.html')
+        elif self.path.startswith('/api/images-data'):
+            path = urlsplit(self.path)
+            page = int(path.query.split('=')[1]) if path.query else 1
+            self.get_images(page)
+        elif self.path.startswith('/api/images'):
+            self.get_images_names()
         else:
-            self.template_response('Not found', 404)
+            self.html_response('Not Found', 404)
 
     def do_POST(self):
         logger.info(f'POST {self.client_address[0]}:{self.path}')
@@ -66,12 +63,13 @@ class ImageHostingHandler(BaseHandler):
             self.delete_image(name, file_type)
             # delete from db
 
-    def get_images_names(self):
+    def get_images_names(self, *args, **kwargs):
         self.json_response({
             'images': self.db.get_images_names()}) # get names from db
 
-    def get_images(self):
-        images = self.db.get_images()
+    def get_images(self, page: int):
+        images = self.db.get_images(page)
+        has_next = self.db.has_next(page)
         res_images = [
             {
                 'id': i[0],
@@ -82,7 +80,8 @@ class ImageHostingHandler(BaseHandler):
                 'file_type': i[5],
             } for i in images]
         self.json_response({
-            'images': res_images
+            'images': res_images,
+            'has_next': has_next
         })
 
     def delete_image(self, name: str, file_type: str):

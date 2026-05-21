@@ -18,3 +18,9 @@ MAX_FILE_SIZE_MB = 5
 MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
 LOGDIR = os.getenv('LOGDIR', 'logs')
 LOG_PATH = WORKDIR / LOGDIR
+
+
+MEDIA_PATH.mkdir(parents=True, exist_ok=True)
+LOG_PATH.mkdir(parents=True, exist_ok=True)
+
+IMAGE_LIMIT = 5

@@ -1,3 +1,5 @@
+import os
+from app.settings import IMAGE_LIMIT
 CREATE_TABLE='''  CREATE TABLE IF NOT EXISTS  images (
     id SERIAL PRIMARY KEY,               -- Уникальный идентификатор записи
     filename TEXT NOT NULL,              -- Уникальное имя файла (сгенерированное)
@@ -18,8 +20,15 @@ WHERE filename = %s
 """
 
 GET_ALL_IMAGES = """
-SELECT * FROM IMAGES
+SELECT *
+FROM images
+ORDER BY upload_time DESC
+LIMIT %s OFFSET %s
 """
 GET_IMAGES_NAMES = """
 SELECT filename || '.' || file_type as filename FROM IMAGES
+"""
+
+GET_IMAGES_COUNT = """
+SELECT COUNT(*) FROM images
 """
