@@ -1,10 +1,15 @@
 import os
 from app.settings import IMAGE_LIMIT
+
+"""
+SQL queries for the image hosting application.
+This script stores database queries for creating the images table, adding images, deleting images, getting image data, and counting records.
+"""
 CREATE_TABLE='''  CREATE TABLE IF NOT EXISTS  images (
     id SERIAL PRIMARY KEY,               -- Уникальный идентификатор записи
     filename TEXT NOT NULL,              -- Уникальное имя файла (сгенерированное)
     original_name TEXT NOT NULL,         -- Оригинальное имя файла (пользователя)
-    size INTEGER NOT NULL,               -- Размер файла в байтах
+    size INTEGER NOT NULL,               -- Размер файла в КБ
     upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Время загрузки файла
     file_type TEXT NOT NULL              -- Формат файла (jpg, png, gif и т.д.)
 );'''

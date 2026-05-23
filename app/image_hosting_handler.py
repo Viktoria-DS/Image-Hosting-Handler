@@ -1,11 +1,8 @@
 import html
 
-from os import environ
 from urllib.parse import urlsplit
-import uuid
 
 import logging
-import multipart
 from psycopg import DatabaseError
 
 from app.db_manager import DBManager
@@ -16,11 +13,16 @@ logger = logging.getLogger(__name__)
 
 
 class ImageHostingHandler(BaseHandler):
+    """
+    HTTP handler for the image hosting application. It manages page rendering, image upload, image listing, pagination,
+        and image deletion.
+    """
     def __init__(self, *args, **kwargs):
         self.db: DBManager = DBManager()
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
+        """Handles GET requests: it renders HTML pages and returns image data for the frontend API."""
         logger.info(f"GET {self.client_address[0]}: {self.path}")
 
         if self.path == '/':
@@ -39,6 +41,7 @@ class ImageHostingHandler(BaseHandler):
             self.html_response('Not Found', 404)
 
     def do_POST(self):
+        """Handles POST requests: it processes image upload requests and saves image metadata to the database."""
         logger.info(f'POST {self.client_address[0]}:{self.path}')
         if self.path == '/api/upload':
             image_dict = self.upload_file()
@@ -56,6 +59,7 @@ class ImageHostingHandler(BaseHandler):
             html.response('Not found', 405)
 
     def do_DELETE(self):
+        """Handles DELETE requests: it deletes an image file from the media directory and removes its database record."""
         logger.info(f'DELETE {self.client_address[0]}:{self.path}')
         if self.path.startswith('/api/images/'):
             name = self.path.split('/')[-1]
@@ -64,10 +68,12 @@ class ImageHostingHandler(BaseHandler):
             # delete from db
 
     def get_images_names(self, *args, **kwargs):
+        """Return uploaded image filenames as a JSON response."""
         self.json_response({
             'images': self.db.get_images_names()}) # get names from db
 
     def get_images(self, page: int):
+        """Returns paginated image metadata as JSON to be used by the frontend to render the image list."""
         images = self.db.get_images(page)
         has_next = self.db.has_next(page)
         res_images = [
@@ -85,11 +91,12 @@ class ImageHostingHandler(BaseHandler):
         })
 
     def delete_image(self, name: str, file_type: str):
+        """Deletes an image from the database and from the media directory."""
         try:
             self.db.delete_image(name)
             (MEDIA_PATH / (name + '.' + file_type)).unlink()
             logger.info(f'Image {name} deleted successfully')
-            self.json_response({'message': 'Image deleted'}, status_code=204)
+            self.json_response({'message': 'Image deleted'}, status_code=200)
         except FileNotFoundError:
             logger.info(f'File {name} not found (on delete)')
             self.json_response({'message': 'Image not found'}, status_code=404)

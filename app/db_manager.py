@@ -2,15 +2,19 @@ import os
 from math import ceil
 from typing import Optional
 import logging
-
 from dotenv import load_dotenv
 from psycopg import Connection, connect, ProgrammingError, OperationalError
 from psycopg.abc import Params
 from psycopg.rows import tuple_row
-
 from app.QUERIES import ADD_IMAGE, GET_IMAGES_NAMES, DELETE_IMAGE_BY_NAME, GET_ALL_IMAGES, CREATE_TABLE, \
     GET_IMAGES_COUNT
 from app.settings import IMAGE_LIMIT
+
+"""
+Database manager for the image hosting application.
+This module loads PostgreSQL connection settings from environment variables
+and provides helper methods for executing SQL queries and working with image data.
+"""
 
 load_dotenv()
 
@@ -27,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class DBManager:
+    """Manages PostgreSQL database connection and image-related database operations."""
     def __init__(self, db_config: dict = None, row_factory=tuple_row):
         self.db_config = db_config or DB
         self.dsn = (
@@ -42,6 +47,10 @@ class DBManager:
         # self.init_tables()
 
     def _execute(self, query, data: Params = None, fetch: bool = True, fetch_all: bool = True) -> list | None:
+        """
+        Executes a SQL query. It can return all rows, one row, or execute a query without returning data.
+        It also handles database connection and basic database errors.
+        """
         try:
             with self._connect() as conn:
                 with conn.cursor() as cur:
@@ -60,6 +69,7 @@ class DBManager:
             print(f"Ошибка в SQL-запросе:\n{e}")
 
     def _connect(self) -> Optional[Connection]:
+        """Creates and returns a PostgreSQL connection."""
         return self._connection if self._connection else connect(
             self.dsn,
             row_factory=self.row_factory
@@ -67,39 +77,46 @@ class DBManager:
 
 
     def fetch_all(self, query, data: Params = None) -> list | None:
+        """Executes a SELECT query and return all rows."""
         return self._execute(query, data)
 
     def fetch_one(self, query, data: Params = None) -> list | None:
+        """Executes a SELECT query and return one row."""
         return self._execute(query, data, fetch_all=False)
 
     def execute(self, query, data: Params = None) -> list | None:
         return self._execute(query, data, fetch=False, fetch_all=False)
 
     def add_image(self, image:dict):
+        """Adds uploaded image metadata to the database."""
         self.execute(ADD_IMAGE, image)
 
     def get_images_names(self):
+        """Returns uploaded image filenames from the database."""
         return self.fetch_all(GET_IMAGES_NAMES)
 
     def get_images(self, page: int):
+        """Returns uploaded image data from the database."""
         offset = (page - 1) * IMAGE_LIMIT
         logger.info(f"offset: {offset}")
         return self.fetch_all(GET_ALL_IMAGES, (IMAGE_LIMIT, offset,)) or []
 
 
     def delete_image(self, name):
-            self.execute(DELETE_IMAGE_BY_NAME, (name,))
+        """Deletes an image record from the database by generated filename."""
+        self.execute(DELETE_IMAGE_BY_NAME, (name,))
 
 
-    # def get_images(self, name):
-    #     return self.fetch_all(GET_ALL_IMAGES, (name,))
     def get_image(self, name):
+        """Returns one image record by generated filename"""
         return self.fetch_one(GET_ALL_IMAGES, (name,))
 
     def init_tables(self):
+        """Create database tables if they do not already exist."""
         self.execute(CREATE_TABLE)
 
     def has_next(self, page):
+        """Checks whether there is a next page of images."""
         result = self.fetch_one(GET_IMAGES_COUNT)
         if not result:
             return False

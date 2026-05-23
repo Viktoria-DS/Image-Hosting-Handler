@@ -1,7 +1,11 @@
 import os
 import pathlib
-
 from dotenv import load_dotenv
+
+"""
+Application settings for the image hosting project.
+This module loads environment variables, defines project paths, file upload limits, allowed image extensions, log paths, and pagination settings.
+"""
 
 load_dotenv()
 

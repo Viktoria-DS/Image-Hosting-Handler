@@ -15,19 +15,22 @@ The application allows users to upload images, stores image metadata in a Postgr
 - Maximum file size: 5 MB
 - Validation of uploaded files using Pillow
 - Automatic generation of unique filenames
-- Uploaded images are stored in a Docker volume
+- Uploaded images are stored in the local `images/` directory mounted into the Docker container.
 - Images are served through Nginx
 - Image metadata is stored in PostgreSQL
 - Uploaded images can be displayed on the images page
+- Images page supports pagination
+- Image list displays:
+  - generated filename with the integrated link
+  - original filename
+  - file size in KB
+  - upload date and time
+  - file type
 - Images can be deleted from storage and database
-- Application actions are logged to `app.log`
+- Application actions are logged to `logs/*.log`
+- PostgreSQL database backups are created automatically using a Python script and the `schedule` library by running `pg_dump` inside the PostgreSQL Docker container
+- Backup files are stored in the local `backups/` directory
 
-## Not Implemented Yet
-
-The following features are planned but not finished yet:
-
-- Pagination for the images list
-- Database backup script
 
 ## Technologies
 
@@ -38,6 +41,9 @@ The following features are planned but not finished yet:
 - Nginx
 - Docker
 - Docker Compose
+- uv
+- schedule
+- python-dotenv
 
 ## Project Structure
 
@@ -45,11 +51,14 @@ The following features are planned but not finished yet:
 project/
 ├── app/
 │   ├── __init__.py
+│   ├── backup.py
 │   ├── base_handler.py
 │   ├── db_manager.py
 │   ├── image_hosting_handler.py
 │   ├── QUERIES.py
 │   └── settings.py
+├── backups/
+│   └── .gitkeep
 ├── images/
 │   └── .gitkeep
 ├── logs/
@@ -106,7 +115,7 @@ http://localhost:8080/images/<filename>
 If you run only the Python backend without Docker and Nginx:
 
 ```bash
-python app.py
+python main.py
 ```
 
 then the backend is available at:
@@ -116,16 +125,16 @@ http://localhost:8000
 ```
 ## Main Routes
 
-| Method | Route | Description |
-| ------ | ----- | ----------- |
-| `GET` | `/` | Displays the main page |
-| `GET` | `/upload` | Displays the image upload page |
-| `GET` | `/images` | Displays the uploaded images page |
+| Method | Route | Description                                                                 |
+| ------ | ----- |-----------------------------------------------------------------------------|
+| `GET` | `/` | Displays the main page                                                      |
+| `GET` | `/upload` | Displays the image upload page                                              |
+| `GET` | `/images` | Displays the uploaded images page                                           |
 | `POST` | `/api/upload` | Uploads an image, validates it, saves it, and stores metadata in PostgreSQL |
-| `GET` | `/api/images` | Returns a list of uploaded image names |
-| `GET` | `/api/images-data` | Returns full image metadata from PostgreSQL |
-| `DELETE` | `/api/images/<filename>` | Deletes an image from storage and database |
-| `GET` | `/images/<filename>` | Serves uploaded images through Nginx |
+| `GET` | `/api/images` | Returns a list of uploaded image names                                      |
+| `GET` | `/api/images-data` | Returns paginated image metadata from PostgreSQL                            |
+| `DELETE` | `/api/images/<filename>` | Deletes an image from storage and database                                  |
+| `GET` | `/images/<filename>` | Serves uploaded images through Nginx                                        |
 
 ## API Examples
 
@@ -141,7 +150,7 @@ Example response:
 {
   "message": "File uploaded successfully",
   "filename": {
-    "filename": "a1b2c3d4.png",
+    "filename": "a1b2c3d4",
     "original_name": "photo.png",
     "size": 245,
     "file_type": "png"
@@ -160,13 +169,14 @@ Example response:
   "images": [
     {
       "id": 1,
-      "filename": "a1b2c3d4.png",
+      "filename": "a1b2c3d4",
       "original_name": "photo.png",
       "size": 245,
       "upload_time": "2025-01-24 15:30:00",
       "file_type": "png"
     }
-  ]
+  ],
+  "has_next": true
 }
 ```
 
@@ -203,16 +213,26 @@ Application and server logs are stored in the `logs/` directory.
 Log messages include information about requests, successful uploads, validation errors, and image deletion.
 
 
-## Volumes
+## Local and Docker Volumes
 
 The project uses Docker volumes for persistent data:
 
 - `images` — stores uploaded images
 - `logs` — stores application logs
-- database volume — stores PostgreSQL data
+- `backups/` — local project directory for database backups
+- `db_data` — Docker volume for PostgreSQL data
 
 This means images, logs, and database data are saved between container restarts.
 
+## Database Backup
+
+The project supports automatic PostgreSQL backups every day at 02:00 using `pg_dump`.
+
+The backup script is located at:
+
+```text
+app/backup.py
+```
 
 ## Stopping the Project
 
@@ -220,7 +240,7 @@ To stop the containers, run:
 
 ```bash
 docker compose down
-```
+
 
 To stop the containers and remove volumes:
 
@@ -228,4 +248,5 @@ To stop the containers and remove volumes:
 docker compose down -v
 ```
 
-Be careful: removing volumes deletes uploaded images, logs, and database data.
+Be careful: docker compose down -v removes the PostgreSQL Docker volume.
+Uploaded images, logs, and backups are stored in local project folders and are not removed unless deleted manually.
