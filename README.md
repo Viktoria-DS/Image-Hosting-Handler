@@ -1,6 +1,11 @@
 # Image Hosting Server
 
 A simple image hosting web application built with Python, Nginx, PostgreSQL, and Docker.
+This is a study project for practicing Python, Docker, HTTP, PostgreSQL, and SQL.  
+The technical requirements are described in `python-1-docker.md` and `python-2-sql.md`.
+https://www.figma.com/design/ivhGgfIBMDsA2xF3qospb6/image-hosting?node-id=0-1&p=f was used as a website layout. 
+Several modifications were made to meet the project requirements.
+
 
 The application allows users to upload images, stores image metadata in a PostgreSQL database, and serves uploaded images through Nginx.
 
